@@ -3,7 +3,7 @@ import gradio as gr
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -28,10 +28,9 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 splits = text_splitter.split_documents(docs)
 
-# 3. Hugging Face Embeddings and FAISS Vector Store
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+# 3. Google Gemini Embeddings and FAISS Vector Store
+embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+
 
 vectorstore = FAISS.from_documents(
     documents=splits,
