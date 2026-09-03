@@ -1,7 +1,9 @@
+gradio
 langchain
 langchain-community
 langchain-text-splitters
-faiss-cpu
-pypdf
-gradio
 langchain-google-genai
+langchain-core
+pypdf
+numpy
+sentence-transformers
