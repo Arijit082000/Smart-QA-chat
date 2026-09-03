@@ -1,23 +1,27 @@
 import os
 import gradio as gr
 
+# Set environment variables to save memory
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["OMP_NUM_THREADS"] = "1"
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import FAISS
+# Use InMemoryVectorStore instead of FAISS (lighter on RAM)
+from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-# 1. API Key Setup
-# Set your API key in your environment variables before running the app
-os.environ["GEMINI_API_KEY"] = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
+# 1. API Key Setup (Read from Render Environment Variable)
+os.environ["GEMINI_API_KEY"] = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 
 # 2. PDF load and chunking
-# Ensure the PDF is in the same directory as this script, or provide the full local path
-file_path = "TechVision_Company_Report.pdf" 
+# Make sure your PDF file name is correct
+file_path = "TechVision_Company_Report.pdf"
 
 loader = PyPDFLoader(file_path)
 docs = loader.load()
@@ -28,11 +32,11 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 splits = text_splitter.split_documents(docs)
 
-# 3. Google Gemini Embeddings and FAISS Vector Store
+# 3. Google Gemini Embeddings and InMemory Vector Store (lightweight on RAM)
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-
-vectorstore = FAISS.from_documents(
+#  Use InMemoryVectorStore, not FAISS
+vectorstore = InMemoryVectorStore.from_documents(
     documents=splits,
     embedding=embeddings
 )
@@ -44,7 +48,7 @@ retriever = vectorstore.as_retriever(
 # 4. Gemini LLM set-up
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
-# 4.2 Format retrieved document chunks and include their source page numbers
+# Formatting function
 def format_docs(docs):
     formatted_docs = []
     for doc in docs:
@@ -94,7 +98,7 @@ rag_chain = (
     | StrOutputParser()
 )
 
-# 6. List of all 20 questions
+# Your 20 questions are right here (kept intact)
 PREDEFINED_QUESTIONS = [
     "1. When was TechVision Solutions Inc. founded, and what type of services does the company primarily provide?",
     "2. How many professionals does TechVision Solutions have, and across how many continents do they work?",
@@ -102,23 +106,23 @@ PREDEFINED_QUESTIONS = [
     "4. What is the Mission Statement of TechVision Solutions?",
     "5. What is the Vision Statement of the company, and what does it aim to become in the future?",
     "6. What are the five Core Values of TechVision Solutions?",
-    "7. Which cloud platforms are included in TechVision Solutions’ Cloud Infrastructure services for deployment, migration, and management?",
+    "7. Which cloud platforms are included in TechVision Solutions' Cloud Infrastructure services for deployment, migration, and management?",
     "8. What types of Data Analytics and AI/ML Solutions does TechVision Solutions provide?",
     "9. What are the key competitive advantages of TechVision Solutions, and which technology vendors does the company have strategic partnerships with?",
-    "10. What are TechVision Solutions’ customer retention rate and Net Promoter Score?",
+    "10. What are TechVision Solutions' customer retention rate and Net Promoter Score?",
     "11. How many projects has TechVision Solutions successfully delivered, and what is its average project success rate?",
     "12. What type of organizational structure does TechVision Solutions operate under, and what are the main objectives of this structure?",
     "13. Who are the CEO, CTO, and CFO of the company, and how many years of professional experience does each have?",
-    "14. How did TechVision Solutions’ revenue change between 2020 and 2024?",
-    "15. What were the company’s EBITDA margins in 2020 and 2024, and what were the main reasons for this improvement?",
-    "16. What were TechVision Solutions’ revenue, EBITDA margin, and employee count in 2024?",
+    "14. How did TechVision Solutions' revenue change between 2020 and 2024?",
+    "15. What were the company's EBITDA margins in 2020 and 2024, and what were the main reasons for this improvement?",
+    "16. What were TechVision Solutions' revenue, EBITDA margin, and employee count in 2024?",
     "17. What problem did TechVision solve in the Global Manufacturing Transformation case study, and what measurable improvements resulted from the AWS migration?",
-    "18. How did TechVision’s solution in the Healthcare Data Analytics case study help reduce patient readmissions and operational costs?",
+    "18. How did TechVision's solution in the Healthcare Data Analytics case study help reduce patient readmissions and operational costs?",
     "19. What are the major strategic initiatives of TechVision Solutions for 2024–2026?",
     "20. Which emerging technologies is TechVision Solutions investing in for the future, and what is the purpose of its AI Center of Excellence?"
 ]
 
-# 7. Backend answer generation
+# 7. Backend functions
 def answer_question(question):
     if not question or not question.strip():
         return "Please enter a question."
@@ -126,9 +130,8 @@ def answer_question(question):
         response = rag_chain.invoke(question)
         return response
     except Exception as e:
-        return f"An error occurred while generating the answer: {str(e)}"
+        return f"An error occurred: {str(e)}"
 
-# 7.1 Retrieve source pages
 def get_sources(question):
     if not question or not question.strip():
         return "No question provided."
@@ -150,24 +153,22 @@ def get_sources(question):
 with gr.Blocks() as interface:
     gr.Markdown(
         """
-        # 🏢 TechVision Corporate Q&A Assistant
-
+        #  TechVision Corporate Q&A Assistant
         Ask questions about the TechVision Solutions Annual Report.
-        The assistant uses Retrieval-Augmented Generation (RAG) to
-        retrieve relevant information from the document.
+        The assistant uses RAG to retrieve relevant information.
         """
     )
     
     question = gr.Textbox(
         label="Ask your question",
-        placeholder="Example: What is the mission statement of TechVision Solutions?",
+        placeholder="Example: What is the mission statement?",
         lines=2
     )
     
     suggested_questions = gr.Dropdown(
         choices=PREDEFINED_QUESTIONS,
         label="Suggested Questions",
-        info="You can select a suggested question or type your own."
+        info="Select a question or type your own."
     )
     
     ask_button = gr.Button("Ask")
