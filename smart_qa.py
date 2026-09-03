@@ -1,14 +1,13 @@
 import os
 import gradio as gr
 
-# Set environment variables to save memory
+# Save memory
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["OMP_NUM_THREADS"] = "1"
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-# Use InMemoryVectorStore instead of FAISS (lighter on RAM)
 from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -16,11 +15,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-# 1. API Key Setup (Read from Render Environment Variable)
+# 1. API Key Setup
 os.environ["GEMINI_API_KEY"] = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 
 # 2. PDF load and chunking
-# Make sure your PDF file name is correct
 file_path = "TechVision_Company_Report.pdf"
 
 loader = PyPDFLoader(file_path)
@@ -32,10 +30,9 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 splits = text_splitter.split_documents(docs)
 
-# 3. Google Gemini Embeddings and InMemory Vector Store (lightweight on RAM)
-embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+# 3. ✅ FIXED: Use the correct embedding model
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
-#  Use InMemoryVectorStore, not FAISS
 vectorstore = InMemoryVectorStore.from_documents(
     documents=splits,
     embedding=embeddings
@@ -45,10 +42,9 @@ retriever = vectorstore.as_retriever(
     search_kwargs={"k": 4}
 )
 
-# 4. Gemini LLM set-up
+# 4. Gemini LLM
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
-# Formatting function
 def format_docs(docs):
     formatted_docs = []
     for doc in docs:
@@ -98,7 +94,7 @@ rag_chain = (
     | StrOutputParser()
 )
 
-# Your 20 questions are right here (kept intact)
+# 20 Predefined Questions
 PREDEFINED_QUESTIONS = [
     "1. When was TechVision Solutions Inc. founded, and what type of services does the company primarily provide?",
     "2. How many professionals does TechVision Solutions have, and across how many continents do they work?",
@@ -122,7 +118,7 @@ PREDEFINED_QUESTIONS = [
     "20. Which emerging technologies is TechVision Solutions investing in for the future, and what is the purpose of its AI Center of Excellence?"
 ]
 
-# 7. Backend functions
+# Backend functions
 def answer_question(question):
     if not question or not question.strip():
         return "Please enter a question."
@@ -149,11 +145,11 @@ def get_sources(question):
     except Exception as e:
         return f"Could not retrieve sources: {str(e)}"
 
-# 8. Gradio UI
+# Gradio UI
 with gr.Blocks() as interface:
     gr.Markdown(
         """
-        #  TechVision Corporate Q&A Assistant
+        # 🏢 TechVision Corporate Q&A Assistant
         Ask questions about the TechVision Solutions Annual Report.
         The assistant uses RAG to retrieve relevant information.
         """
