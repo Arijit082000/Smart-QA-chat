@@ -1,7 +1,8 @@
-gradio
+streamlit
 langchain
-langchain-community
-langchain-text-splitters
 langchain-google-genai
-langchain-core
+langchain-huggingface
+langchain-community
+faiss-cpu
 pypdf
+sentence-transformers
